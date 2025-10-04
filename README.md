@@ -1,7 +1,6 @@
 # top-n-spotify
 Generate Spotify top playlist by giving an artist name and wanted amount of tracks.
-It will create a public playlist on your profile with the most popular n tracks from that artist.  
-Have fun vibing!
+This will create a public playlist on your profile with the most popular n tracks from that artist.
 
 ## Prerequisites
 
@@ -24,12 +23,12 @@ You need to register an "app" on Spotify's developer portal to get the credentia
     ```
 5.  Once created, you will see your **Client ID**. Click **"Show client secret"** to see your **Client Secret**. You will need both of these soon.
 
-### 2. Prepare the Project Files
+### 2. Prepare the Project
 
 1.  **Clone the Repository:**
     ```bash
     git clone git@github.com:boko-maru/top-n-spotify.git
-    cd top-n-spotify.git
+    cd top-n-spotify
     ```
 
 2.  **Set Up the Python Environment (using `uv`):**
@@ -41,8 +40,9 @@ You need to register an "app" on Spotify's developer portal to get the credentia
 ### 3. Configure Your Credentials
 
 Create an `.env` file in the root of the project.
-Copy the following template into it, replacing the placeholders with the credentials from your Spotify app.
-    ```env
+Copy the following template into it, replacing the placeholders with the credentials from your Spotify app:
+    
+    ```
     SPOTIPY_CLIENT_ID='Your_Client_ID_Here'
     SPOTIPY_CLIENT_SECRET='Your_Client_Secret_Here'
     SPOTIPY_REDIRECT_URI='http://127.0.0.1:8888/callback'
@@ -56,10 +56,11 @@ python uv run top-n-spotify.py "Artist Name" <N>
 ```
 > **Note:** If the artist's name contains spaces, you must enclose it in quotes.
 
-**Example:**
+**Example usage:**
     ```bash
     uv run top-n-spotify.py "deadmau5" 69
     ```
+    
     ![deadmau5 slaps hard](example.png)
 
 ### About First-Time Authentication
