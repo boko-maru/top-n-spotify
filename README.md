@@ -61,7 +61,7 @@ python uv run top-n-spotify.py "Artist Name" <N>
     uv run top-n-spotify.py "deadmau5" 69
     ```
     
-    ![deadmau5 slaps hard](example.png)
+![deadmau5 slaps hard](example.png)
 
 ### About First-Time Authentication
 
