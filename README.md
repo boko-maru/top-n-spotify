@@ -32,7 +32,8 @@ You need to register an "app" on Spotify's developer portal to get the credentia
     ```
 
 2.  **Set Up the Python Environment (using `uv`):**
-    `uv` is a modern, blazingly fast & easy alternative to `pip`, `venv`, `poetry`, etc. To sync the needed dependencies you just run:
+    `uv` is a modern, blazingly fast & easy alternative to `pip`, `venv`, `poetry`, etc.
+    To sync the needed dependencies you just run:
     ```bash
     uv sync
     ```
