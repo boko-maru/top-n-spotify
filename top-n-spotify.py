@@ -1,34 +1,86 @@
+import argparse
+import math
 import os
-import sys
+from datetime import datetime
 
 import spotipy
 from dotenv import load_dotenv
 from spotipy.oauth2 import SpotifyOAuth
 
 
+def parse_release_date(date_str: str) -> datetime:
+    """Handles different release date precisions (YYYY, YYYY-MM, YYYY-MM-DD)."""
+    try:
+        return datetime.fromisoformat(date_str)
+    except ValueError:
+        parts = date_str.split('-')
+        if len(parts) == 1: return datetime(int(parts[0]), 1, 1)
+        if len(parts) == 2: return datetime(int(parts[0]), int(parts[1]), 1)
+    return datetime.now()
+
+
+def calculate_custom_score(track: dict, aggressiveness: int) -> float:
+    """Calculates a custom score based on a configurable aggressiveness level."""
+    popularity = track.get('popularity', 0)
+
+    if aggressiveness == 0:
+        return popularity
+
+    release_date_str = track.get('album', {}).get('release_date', '')
+    if not release_date_str:
+        return popularity
+
+    release_date = parse_release_date(release_date_str)
+    days_since_release = (datetime.now() - release_date).days
+
+    if days_since_release < 0:
+        days_since_release = 0
+
+    # Add a small constant to avoid math errors with log(0) or 0**...
+    age_factor = days_since_release + 2
+
+    if aggressiveness == 1: # Subtle
+        multiplier = math.log(math.log(age_factor) + 1)
+    elif aggressiveness == 2: # Balanced
+        multiplier = math.log(age_factor)
+    elif aggressiveness == 3: # Aggressive
+        multiplier = math.sqrt(age_factor)
+    else: # Default to Balanced if invalid level is given
+        multiplier = math.log(age_factor)
+
+    return popularity * multiplier
+
+
 def main():
     """Single main function to run the script."""
-
     load_dotenv()
+
+    # --- Professional Argument Parsing ---
+    parser = argparse.ArgumentParser(
+        description="Creates a Spotify playlist of an artist's top tracks based on popularity and age.",
+        formatter_class=argparse.RawTextHelpFormatter # For better help text formatting
+    )
+    parser.add_argument("artist", type=str, help="The name of the artist (use quotes for multi-word names).")
+    parser.add_argument("top_n", type=int, help="The number of tracks to include in the playlist.")
+    parser.add_argument(
+        "-a", "--aggressiveness", type=int, default=1, choices=[0, 1, 2, 3],
+        help="How much to weigh a song's age against its recent popularity.\n"
+             "  0: None (pure Spotify popularity - favors newness).\n"
+             "  1: Balanced (logarithmic - gently boosts classics).\n"
+             "  2: Aggressive (square root - strongly boosts classics).\n"
+             "  3: Classics-Focused (power - heavily favors time-tested tracks)."
+    )
+    args = parser.parse_args()
+
+    artist_arg = args.artist
+    top_n_arg = args.top_n
+    aggressiveness_arg = args.aggressiveness
+    # --- End Argument Parsing ---
 
     client_id = os.getenv("SPOTIPY_CLIENT_ID")
     client_secret = os.getenv("SPOTIPY_CLIENT_SECRET")
-
     if not client_id or not client_secret:
-        print("Error: Missing credentials. Make sure you have a .env file with SPOTIPY_CLIENT_ID and SPOTIPY_CLIENT_SECRET.")
-        return
-
-    if len(sys.argv) < 3:
-        print("Error: Missing arguments.")
-        print("Usage: uv run top-n-spotify.py \"<artist name>\" <number_of_songs>")
-        print("Example: uv run top-n-spotify.py \"Daft Punk\" 20")
-        return
-
-    artist_arg = sys.argv[1]
-    try:
-        top_n_arg = int(sys.argv[2])
-    except ValueError:
-        print("Error: The second argument (top-n) must be an integer.")
+        print("Error: Missing credentials in .env file.")
         return
 
     playlist_name = f"Top {top_n_arg} {artist_arg}"
@@ -96,17 +148,23 @@ def main():
     print(f"  found {len(all_tracks)} tracks in total.")
 
     all_tracks = [track for track in all_tracks if track is not None]
-    unique_by_id_tracks = {track['id']: track for track in all_tracks}.values()
-    sorted_tracks = sorted(unique_by_id_tracks, key=lambda x: x['popularity'], reverse=True)
+    unique_by_id_tracks = list({track['id']: track for track in all_tracks}.values())
 
-    # We take a larger slice initially to have more tracks to filter through
-    initial_top_tracks = sorted_tracks[:top_n_arg * 2] # Grab more to ensure we can find enough unique names
+    print(f" calculating custom score for each track with aggressiveness level {aggressiveness_arg}...")
 
+    # Sort by our new custom score, passing the aggressiveness level
+    sorted_tracks = sorted(
+        unique_by_id_tracks,
+        key=lambda t: calculate_custom_score(t, aggressiveness_arg),
+        reverse=True
+    )
+
+    print(" filtering out duplicate song names...")
     final_tracks = []
     seen_names = set()
-    for track in initial_top_tracks:
+    for track in sorted_tracks:
         if len(final_tracks) >= top_n_arg:
-            break  # Stop once we have enough tracks
+            break
         track_name = track['name']
         if track_name not in seen_names:
             final_tracks.append(track)
